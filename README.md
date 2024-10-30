@@ -10,7 +10,7 @@ client.cpp holds the main client file <br> <br>
 
 # Known Issues 
 The Ban command currently can't find the user ( from what i've tested ) - will fix soon <br>
-UUID Doesn't assign to anything so it's useless at the moment
+UUID Doesn't assign to anything so it's useless at the moment <br>
 Handle client disconnections - WILL FIX ASAP
 
 
