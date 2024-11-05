@@ -208,10 +208,6 @@ static void Client_Join(const int clientsocket) noexcept
      curses, etc.
      */
     std::cout << "-----------------------------------\n";
-    for(;;)
-    {
-    Receive_Messages(clientsocket);
-    }
 }
 
 static void Client_Leave(const int clientsocket) noexcept
