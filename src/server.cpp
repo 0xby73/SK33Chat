@@ -38,11 +38,13 @@ struct ClientStruct
 std::map<std::string, ClientStruct> clientmap;
 
 std::atomic<bool> Run(true);
+bool Show_Menu = true;
 
 std::vector<int> clients;
 std::mutex clientmutex;
 std::mutex clientmutex2;
 
+unsigned short port = 8080; // Set by default
 std::string TargetUser = "Blank";
 
 static void Broadcast_Message(const std::string& msg, const int clientsocket) noexcept {
@@ -73,7 +75,7 @@ static void Execute_Ban(const int clientsocket) noexcept
         if (it != clientmap.end()) {
             close(it->second.SOCK); 
             clientmap.erase(it);
-            std::cout << RED << TargetUser << " Kicked\n";
+            std::cout << RED << TargetUser << " has been kicked\n";
         }
         else
         {
@@ -126,10 +128,8 @@ static void Client_Handle(const int clientsocket) noexcept
 
     Client_Join(clientsocket);
 
-    for(;;)
-    {
-        Receive_Messages(clientsocket);
-    }
+    // While true looped function
+    Receive_Messages(clientsocket);
 }
 
 static void Client_Assign(const int clientsocket) noexcept
@@ -141,11 +141,13 @@ static void Client_Assign(const int clientsocket) noexcept
     clients.push_back(clientsocket);
     }
 
+    // Client_Join() Addon
     std::cout << "-----------------------------------\n";
     std::cout << GREEN << "New client connected: " << RESET << clients.size() << '\n';
-    std::cout << "Username: ";
+    std::cout << BLUE << "Username: ";
+    
     std::string Username = Username_Receive(clientsocket);
-      // Remove the entry from the map
+
     ClientStruct client;
     client.SOCK = clientsocket;
     client.USERNAME = Username;
@@ -154,7 +156,7 @@ static void Client_Assign(const int clientsocket) noexcept
     clientmap[Username] = client;
 
     // This is also a part of Client_Join() for now
-    std::cout << "UUID - "<< client.UUID << "---- Useless for now\n";
+    std::cout << RESET << "UUID - "<< client.UUID << "---- Useless for now\n";
     // std::cout << client.USERNAME << '\n';
     std::cout << "Socket Index - " << client.SOCK << '\n';
 }
@@ -212,29 +214,47 @@ static void Client_Join(const int clientsocket) noexcept
     }
 }
 
+static void Client_Leave(const int clientsocket) noexcept
+{
+    std::lock_guard<std::mutex> lock(clientmutex);
+    clients.erase(std::remove(clients.begin(), clients.end(), clientsocket), clients.end());
+    std::cout << "-----------------------------------\n";
+    std::cout << RED << "Client disconnected | clients: " << clients.size() << RESET << '\n'; 
+    std::cout << "-----------------------------------\n";
+    close(clientsocket);
+}
+
 static void Receive_Messages(const int clientsocket) noexcept
 {
-    char buffer[1024] = {0};
-    const int recvbytes = recv(clientsocket, buffer, sizeof(buffer), 0);
-    if (recvbytes < 0)
+    while(true)
     {
-        std::cerr << "Failed to receive message." << strerror(errno) << '\n';
-    }
+        char buffer[1024] = {0};
+        const int recvbytes = recv(clientsocket, buffer, sizeof(buffer), 0);
+        if (recvbytes < 0)
+        {
+            std::cerr << "Failed to receive message." << strerror(errno) << '\n';
+            break;
+        }
     
-    else if (recvbytes == 0)
-    {
-        Client_Leave();
-    }
+        else if (recvbytes == 0)
+        {
+            break;
+        }
     
-    else
-    {
-        std::string MESSAGE(buffer, recvbytes);
+        else
+        {
+            std::string MESSAGE(buffer, recvbytes);
         
-        Broadcast_Message(MESSAGE, clientsocket);
-        std::cout << MESSAGE << '\n';
+            Broadcast_Message(MESSAGE, clientsocket);
+            std::cout << MESSAGE << '\n';
 
+        }
+        memset(buffer, 0, sizeof(buffer));
     }
-    memset(buffer, 0, sizeof(buffer));
+
+    // THIS SHIT IS BROKEN IT SPAMS IT WHEN YOU LEAVE, WILL FIX L8R
+    Client_Leave(clientsocket);
+    
 }
 
 /*
@@ -270,7 +290,7 @@ static int Create_Socket() noexcept
 }
 
 // 1
-static bool Bind_Socket(const int serversocket, const int port) noexcept
+static bool Bind_Socket(const int serversocket) noexcept
 {
   struct sockaddr_in saddr;
   memset(&saddr, 0, sizeof(saddr));
@@ -314,16 +334,73 @@ static int Accept_Socket(const int serversocket) noexcept
 	return clientsocket;
 }
 // Networking End --------------------
-
-int main(const int argc, char **argv) noexcept
+// Ugly section, will  clean it up && move it somewhere "cleaner"
+static void Select_Options() noexcept
 {
-	if (argc != 2)
-  {
-    std::cerr << "Usage: " << argv[0] << " PORT\n";
-    return 1;
-  }
+    while(Show_Menu)
+    {
+        int options;
+        Utils::Clear_Screen();
 
-	int port = std::stoi(argv[1]); 
+        std::cout << "Hosting IP Address: **Selected by default**\n"; 
+        std::cout << "1. Port " << port << '\n';
+        std::cout << "-------------------------\n"
+                     "0. Start\n"
+                     "# >> ";
+        std::cin >> options;
+        switch(options)
+        {
+            case 0:
+                Show_Menu = false;
+                break;
+            case 1:
+                Utils::Clear_Screen();
+                int select;
+                std::cout << "Selected Port: " << port << '\n';
+                std::cout << "Select a port number '0 - 65,535'\n";
+                std::cout << "0. Go back\n";
+                std::cout << "---------------------------------\n";
+                std::cout << "# >> ";
+                std::cin >> select;
+                if (select == 0)
+                {
+                    Utils::Clear_Screen();
+                    break;
+                }
+                else if (select > 65535)
+                {
+                    std::cout << "\nInvalid port: " << select << "Max port: 65535\n";
+                    std::this_thread::sleep_for(std::chrono::seconds(2));
+                    break;
+                }
+                else
+                {
+                    port = select;
+                    std::cout << "Port selected: " << port << '\n';
+                    std::this_thread::sleep_for(std::chrono::milliseconds(250));
+                    break;
+                }
+            default:
+                std::cout << "Please pick a valid option\n";
+                std::cout << "You picked: " << select;
+                std::this_thread::sleep_for(std::chrono::seconds(2));
+                break;
+                
+
+
+
+                
+
+
+                
+        }
+    }
+
+}
+
+int main()noexcept
+{
+    Select_Options();
 	
 	// Functions Begin
 
@@ -339,7 +416,7 @@ int main(const int argc, char **argv) noexcept
 		return 1;
 	}
 
-	if (!Bind_Socket(serversocket, port))
+	if (!Bind_Socket(serversocket))
 	{
 		return 1;
 	}
@@ -353,21 +430,22 @@ int main(const int argc, char **argv) noexcept
 	for (;;)
 	{
   	int clientsocket = Accept_Socket(serversocket);
-	  if (clientsocket == -1)
-	  {
+	 if (clientsocket == -1)
+	 {
           continue;
 
-	  }
-      if (runonce < 1)
-      {
+	 }
+
+		std::thread fortnite(Client_Handle, clientsocket);
+        fortnite.detach();
+      
+        if (runonce < 1)
+        {
           std::cout << runonce << '\n';
           std::thread bigchungus(Server_Send, clientsocket);
           bigchungus.detach();
           ++runonce;
-      }
-		std::thread fortnite(Client_Handle, clientsocket);
-		fortnite.detach();
-
+        }
 
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
