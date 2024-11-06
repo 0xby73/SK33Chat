@@ -45,7 +45,7 @@ static void Receive_Message(const int clientsocket) noexcept
             buffer[recvbytes] = '\0';
             
             std::string MESSAGE(buffer, recvbytes);
-            std::cout << MESSAGE << '\n';
+            std::cout << Utils::Get_Time() << " | " << MESSAGE << '\n';
         }
         else if (recvbytes == 0)
         {
@@ -68,7 +68,7 @@ static void Send_Message(const int clientsocket, const std::string& Username) no
     while(Run)
     {
         std::string msg;
-        std::cout << Username + "- ";
+        std::cout << Utils::Get_Time() << " | "<< Username + ": ";
         std::getline(std::cin, msg);
 
         if (msg.empty())
