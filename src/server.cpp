@@ -208,6 +208,7 @@ static void Client_Join(const int clientsocket) noexcept
      curses, etc.
      */
     std::cout << "-----------------------------------\n";
+
 }
 
 static void Client_Leave(const int clientsocket) noexcept
@@ -242,7 +243,7 @@ static void Receive_Messages(const int clientsocket) noexcept
             std::string MESSAGE(buffer, recvbytes);
         
             Broadcast_Message(MESSAGE, clientsocket);
-            std::cout << MESSAGE << '\n';
+            std::cout << Utils::Get_Time() << " | " << MESSAGE << '\n';
 
         }
         memset(buffer, 0, sizeof(buffer));
@@ -330,7 +331,7 @@ static int Accept_Socket(const int serversocket) noexcept
 	return clientsocket;
 }
 // Networking End --------------------
-// Ugly section, will  clean it up && move it somewhere "cleaner"
+
 static void Select_Options() noexcept
 {
     while(Show_Menu)
@@ -380,15 +381,7 @@ static void Select_Options() noexcept
                 std::cout << "Please pick a valid option\n";
                 std::cout << "You picked: " << select;
                 std::this_thread::sleep_for(std::chrono::seconds(2));
-                break;
-                
-
-
-
-                
-
-
-                
+                break;      
         }
     }
 
@@ -432,7 +425,7 @@ int main()noexcept
 
 	 }
 
-		std::thread fortnite(Client_Handle, clientsocket);
+	std::thread fortnite(Client_Handle, clientsocket);
         fortnite.detach();
       
         if (runonce < 1)
@@ -442,6 +435,8 @@ int main()noexcept
           bigchungus.detach();
           ++runonce;
         }
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
 	}
 
