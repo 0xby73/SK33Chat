@@ -1,5 +1,10 @@
 Too lazy to write a fancy README at the moment <br>
-run ```./setup.sh``` and then run ```make all``` <br>
+run
+```sh
+sh setup.sh
+make all
+```
+
 Hosting a server is ```./server``` <br>
 Running the client is ```./client IP PORT``` <br> <br>
 
