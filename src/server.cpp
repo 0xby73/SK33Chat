@@ -37,6 +37,8 @@ struct ClientStruct
 
 std::map<std::string, ClientStruct> clientmap;
 
+bool QKICK = false;
+
 std::atomic<bool> Run(true);
 bool Show_Menu = true;
 
@@ -55,7 +57,7 @@ static void Broadcast_Message(const std::string& msg, const int clientsocket) no
         {
             if (send(client, msg.c_str(), msg.size(), 0) == -1)
             {
-                std::cerr << "Error sending to client " << client << " Error: " << strerror(errno) << '\n';
+               // std::cerr << "Error sending to client " << client << " Error: " << strerror(errno) << '\n';
             }
         }
     }
@@ -64,27 +66,39 @@ static void Broadcast_Message(const std::string& msg, const int clientsocket) no
 
 
 // Server to client Interactions Begin - Events will be in the Header file, eventually
-static void Execute_Ban(const int clientsocket) noexcept
+static void Execute_Kick(const int clientsocket) noexcept
 {
+    std::string KickBroadcast = TargetUser + " Has been kicked.\n";
     if (TargetUser != "Blank")
     {
-        std::cout << "Attempting to ban '" << TargetUser << "' \n";
-
+        std::cout << ORANGE << "Kicking '"<< TargetUser << "' \n" << RESET;
         std::lock_guard<std::mutex> lock(clientmutex);
         auto it = clientmap.find(TargetUser);
         if (it != clientmap.end()) {
-            close(it->second.SOCK); 
+            // Messages Begin
+            send(it->second.SOCK, "\nYou have been kicked", 30, 0);
+            if (!QKICK) {
+                std::thread BroadcastThread([KickBroadcast, clientsocket]() {
+                    std::this_thread::sleep_for(std::chrono::seconds(1));
+                    Broadcast_Message(KickBroadcast, clientsocket);
+                });
+                BroadcastThread.detach(); 
+            }
+            
+            // Messages End
+            close(it->second.SOCK);
             clientmap.erase(it);
-            std::cout << RED << TargetUser << " has been kicked\n";
+            QKICK = false;
+            std::cout << GREEN << TargetUser << " has been kicked\n" << RESET;
         }
         else
         {
-            std::cout << "Couldn't ban user\n";
+            std::cout << RED << "Couldn't kick user" << RESET << '\n';
         }
     }
     else
     {
-        std::cout << "TargetUser is blank\n";
+        std::cout << "Targer User is blank\n";
     }
     TargetUser = "Blank";
 }
@@ -103,18 +117,36 @@ static void Server_Send(const int clientsocket) noexcept
             std::cout << "No command executed\n";
             continue;
         }
-        
-        if (servermsg.rfind("!ban", 0) == 0)
-            // but now i'm getting another erroor here
+       
+        if (servermsg.rfind("!help", 0) == 0)
         {
-            TargetUser = servermsg.substr(4);
+            std::cout << "\n----------HELP MENU----------\n"
+                         "!help - Displays the help menu\n"
+                         "!kick <USERNAME> - Kicks the specified user\n"
+                         "!qkick <USERNAME> - Quietly kicks the specified user (Doesn't broadcast the kick)\n";
+        }
+
+        if (servermsg.rfind("!kick", 0) == 0)
+        {
+            TargetUser = servermsg.substr(5);
             TargetUser.erase(std::remove_if(TargetUser.begin(), TargetUser.end(), ::isspace), TargetUser.end());
-            Execute_Ban(clientsocket);
+            Execute_Kick(clientsocket);
 
         }
+
+        if (servermsg.rfind("!qkick", 0) == 0)
+        {
+            QKICK = true;
+            TargetUser = servermsg.substr(6);
+            TargetUser.erase(std::remove_if(TargetUser.begin(), TargetUser.end(), ::isspace), TargetUser.end());
+            Execute_Kick(clientsocket);
+
+        }
+
+
         else
         {
-            std::cout << "Command not found\n";
+            std::cout << "Command not found. Run !help for a list of commands\n";
         }
 
 
@@ -141,12 +173,16 @@ static void Client_Assign(const int clientsocket) noexcept
     clients.push_back(clientsocket);
     }
 
+
     // Client_Join() Addon
     std::cout << "-----------------------------------\n";
     std::cout << GREEN << "New client connected: " << RESET << clients.size() << '\n';
     std::cout << BLUE << "Username: ";
     
     std::string Username = Username_Receive(clientsocket);
+
+    std::string HasJoined = '\n' + Username + " Has arrived" + RESET;// Making custom messages soon in header
+    Broadcast_Message(HasJoined, clientsocket);
 
     ClientStruct client;
     client.SOCK = clientsocket;
@@ -174,6 +210,7 @@ static std::string Username_Receive(const int clientsocket) noexcept
     else
     {
         Username = Client_Username(buffer);
+        Username.erase(std::remove_if(Username.begin(), Username.end(), ::isspace), Username.end());
         
     }
     return Username;
@@ -229,7 +266,7 @@ static void Receive_Messages(const int clientsocket) noexcept
         const int recvbytes = recv(clientsocket, buffer, sizeof(buffer), 0);
         if (recvbytes < 0)
         {
-            std::cerr << "Failed to receive message." << strerror(errno) << '\n';
+            // std::cerr << "Failed to receive message." << strerror(errno) << '\n';
             break;
         }
     
@@ -381,7 +418,7 @@ static void Select_Options() noexcept
                 std::cout << "Please pick a valid option\n";
                 std::cout << "You picked: " << select;
                 std::this_thread::sleep_for(std::chrono::seconds(2));
-                break;      
+                break;
         }
     }
 
@@ -419,13 +456,13 @@ int main()noexcept
 	for (;;)
 	{
   	int clientsocket = Accept_Socket(serversocket);
-	 if (clientsocket == -1)
-	 {
+	  if (clientsocket == -1)
+	  {
           continue;
 
-	 }
+	  }
 
-	std::thread fortnite(Client_Handle, clientsocket);
+		std::thread fortnite(Client_Handle, clientsocket);
         fortnite.detach();
       
         if (runonce < 1)
