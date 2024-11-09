@@ -286,7 +286,6 @@ static void Receive_Messages(const int clientsocket) noexcept
         memset(buffer, 0, sizeof(buffer));
     }
 
-    // THIS SHIT IS BROKEN IT SPAMS IT WHEN YOU LEAVE, WILL FIX L8R
     Client_Leave(clientsocket);
     
 }
