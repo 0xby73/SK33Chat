@@ -15,5 +15,5 @@ client.cpp holds the main client file <br> <br>
 FOSS Chat application to circumvent the heavy telemetry from commpanies to provide a cleaner and safer resource of communication
 
 # Known Issues 
-The Ban command currently can't find the user ( from what i've tested ) - will fix soon <br>
+The kick command doesn't close the client, the client has to close manually by typing a message on it so the server bugs ( still usable ) until its removed. Also another reason why some of the error handling is commented out. <br>
 UUID Doesn't assign to anything so it's useless at the moment <br>
