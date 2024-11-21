@@ -12,7 +12,7 @@ server.cpp holds the main server file <br>
 client.cpp holds the main client file <br> <br>
 
 # What is SK33Chat
-FOSS Chat application to circumvent the heavy telemetry from commpanies to provide a cleaner and safer resource of communication
+FOSS Chat application to circumvent the heavy telemetry from companies to provide a cleaner and safer resource of communication
 
 # Known Issues 
 The kick command doesn't close the client, the client has to close manually by typing a message on it so the server bugs ( still usable ) until its removed. Also another reason why some of the error handling is commented out. <br>
